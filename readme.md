@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.7
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.5
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.7.py` 目前提供單模型、接力、討論共識三種模式，並支援圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.5.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -8,12 +8,19 @@
   * **單模型（只用裁判長）**：直接由裁判長模型回答使用者需求。
   * **接力模式（A→B→裁判長）**：專家 A 與專家 B 先後作答，再交由裁判長統整。
   * **討論共識（三專家→裁判長）**：三位專家先獨立作答，再進行多輪共識確認，最後由裁判長仲裁。
-* **多模型陣容切換**：內建 18 個模型選項，可為專家 A、B、C 與裁判長分別指定模型。
+* **LM Studio 本地模型支援**（v2.8.5 新增）：
+  * 優先透過 `lmstudio` 官方 Python SDK 連線（不需要在 LM Studio 開啟「本地伺服器」）。
+  * SDK 不可用時自動退回 HTTP REST API（`aiohttp`）備援，相容所有 LM Studio 版本。
+  * 自動掃描本機常見路徑下的 `.gguf` 模型檔並加入選單。
+  * GUI 提供 LM Studio URL 輸入欄、**🔄 重新整理本地模型** 與 **🔌 測試連線** 按鈕。
+  * 特殊選項「**[本地] 目前 LM Studio 載入的模型**」：直接使用 LM Studio 當前已載入的模型，無需指定路徑。
+* **模型清單來自 `ai_models.json`**：GitHub Copilot 雲端模型清單與 LM Studio 路徑設定皆可於 `ai_models.json` 調整，無需修改程式碼。
+* **多模型陣容切換**：可為專家 A、B、C 與裁判長分別指定雲端或本地模型。
 * **圖片與純文字雙模式**：可選擇整個資料夾掃描圖片，或直接多選圖片檔；若不提供圖片，也能以純文字模式執行。
 * **提示詞模板系統**：會自動掃描 `GEM_提示詞整合` 目錄下的 `.md` / `.txt` 檔，並可一鍵套用到各角色的 system prompt。
 * **即時串流日誌**：AI 回應會持續寫入 GUI 日誌區，便於觀察每個角色的推論過程。
 * **可中途停止會議**：執行中可按下「⛔ 停止」，系統會在當前步驟完成後安全停止。
-* **設定自動保存**：目前選擇的模式、模型、圖片來源、模板、提示詞與主題，都會寫入 `board_meeting_config.json`。
+* **設定自動保存**：目前選擇的模式、模型、LM Studio URL、圖片來源、模板、提示詞與主題，都會寫入 `board_meeting_config.json`。
 * **時間戳記報告輸出**：每次會議完成後自動產生 `AI_Board_Report_YYYYMMDD_HHMMSS.md`，不覆蓋舊檔。
 
 ---
@@ -45,6 +52,7 @@
 * 程式最多會使用 **15 張圖片**。
 * 若同時曾選過資料夾與圖片檔，執行時會以 **多選圖片檔** 為優先。
 * 按下 **❌ 清除** 後，資料夾與圖片檔選擇都會被清空，下次將以純文字模式執行。
+* 使用 LM Studio 本地模型且含圖片時，會自動改用 HTTP 方式傳送（SDK 不支援圖片 URL）。
 
 ### 步驟 2：選擇 AI 模型陣容
 
@@ -55,13 +63,17 @@
 * 🟠 專家 C
 * 🟣 裁判長
 
-目前程式內建的模型顯示名稱與倍率，對應到 GitHub Copilot SDK 的 model ID。README 不逐一列出全部 model ID，但 GUI 會直接顯示可選模型，例如：
+模型清單讀取自 `ai_models.json`，目前包含：
 
-* Claude Sonnet 4.6 / 4.5 / 4
+* Claude Sonnet 4.6（預設）/ 4.5 / 4
 * Claude Haiku 4.5
 * Claude Opus 4.6 / 4.5
-* Gemini 3 Pro (Preview)
-* GPT-5.4 / 5.3-Codex / 5.2 / 5.2-Codex / 5.1 系列 / GPT-4.1
+* Gemini 3 Pro (Preview) / Gemini 3.1 Pro (Preview)
+* GPT-5.4 / GPT-5.4 mini / GPT-5.3-Codex / GPT-5.2 / GPT-5.2-Codex / GPT-5.1 系列 / GPT-4.1
+* **[本地] 目前 LM Studio 載入的模型**（動態取得當前已載入模型）
+* **[本地] 自動掃描到的 .gguf 模型**（程式啟動時自動偵測）
+
+若要更改 LM Studio 伺服器網址，可直接在模型區塊的 **LM Studio URL** 欄位修改後，按 **🔄 重新整理本地模型** 套用。
 
 ### 步驟 3：設定提示詞與輸入主題
 
@@ -107,16 +119,24 @@
 ### 前置條件
 
 * **Python 3.8 以上**
-* **GitHub Copilot 可用環境**
+* **GitHub Copilot 可用環境**（使用雲端模型時）
   * 程式碼使用 `from copilot import CopilotClient`
   * 需先在本機完成 GitHub Copilot 驗證登入
+* **LM Studio**（使用本地模型時，可選）
+  * 純文字推論：不需要開啟 LM Studio 的「本地伺服器（Local Server）」，透過官方 SDK 直連即可。
+  * 含圖片推論：需要開啟 LM Studio 的「本地伺服器」並確保模型已載入。
 
 ### 安裝套件
 
-本程式仰賴提供 `copilot` 模組的 GitHub Copilot Python SDK；以目前作者環境而言，可使用：
-
 ```bash
+# 必要：GitHub Copilot Python SDK
 pip install github-copilot-sdk
+
+# 必要：非同步 HTTP 連線（LM Studio HTTP 備援與圖片傳輸）
+pip install aiohttp
+
+# 可選：LM Studio 官方 SDK（純文字推論，不需開啟 Local Server）
+pip install lmstudio
 ```
 
 其餘如 `tkinter`、`asyncio`、`json`、`threading`、`mimetypes`、`base64` 皆為 Python 標準函式庫。
@@ -128,7 +148,7 @@ pip install github-copilot-sdk
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.7.py
+python board_meeting_gui_v2.8.5.py
 ```
 
 ---
@@ -155,12 +175,23 @@ GEM_提示詞整合\
 
 ## 📂 輸入與輸出檔案
 
+### `ai_models.json`
+
+模型清單與 LM Studio 設定檔，主要包含：
+
+* `models`：GitHub Copilot 雲端模型的顯示名稱 → API model ID 對照表
+* `lm_studio_url`：LM Studio 伺服器網址（預設 `http://localhost:1234/v1`）
+* `lm_studio_paths`：本機 `.gguf` 模型自動掃描路徑清單
+
+修改此檔可新增雲端模型或調整 LM Studio 掃描路徑，無需修改程式碼。
+
 ### `board_meeting_config.json`
 
 啟動會議前會自動寫入，主要保存：
 
 * 圖片資料夾路徑
 * 多選圖片清單
+* LM Studio URL（新增）
 * 會議模式
 * 討論輪數上限
 * 四個角色的模型選擇
@@ -186,15 +217,16 @@ GEM_提示詞整合\
 ## ⚠️ 注意事項
 
 * 這是一個本機 GUI 工具，執行時需要可用的桌面環境。
-* 圖片讀取支援 `.jpg`、`.jpeg`、`.png`、`.webp`。
-* 無法讀取的圖片會被略過。
-* 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK 與 Python 版本相容。
+* 圖片讀取支援 `.jpg`、`.jpeg`、`.png`、`.webp`；無法讀取的圖片會被略過。
+* LM Studio 連線相容性：部分電腦環境（特別是 Windows）可能因 `aiohttp` 或 LM Studio 版本差異導致 HTTP 模式連線不穩定；若遇此情況，可嘗試安裝 `lmstudio` 官方 SDK（`pip install lmstudio`），SDK 模式相容性較佳。
+* 若 LM Studio 功能無法使用，雲端 GitHub Copilot 模型不受影響，仍可正常運作。
+* 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
 
 ---
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.7.py`
-* 舊版檔案：`board_meeting_gui_v2.6.py`
+* 主程式：`board_meeting_gui_v2.8.5.py`
+* 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`
