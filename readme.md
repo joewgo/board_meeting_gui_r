@@ -8,12 +8,15 @@
   * **單模型（只用裁判長）**：直接由裁判長模型回答使用者需求。
   * **接力模式（A→B→裁判長）**：專家 A 與專家 B 先後作答，再交由裁判長統整。
   * **討論共識（三專家→裁判長）**：三位專家先獨立作答，再進行多輪共識確認，最後由裁判長仲裁。
-* **LM Studio 本地模型支援**（v2.8.5 新增）：
+* **LM Studio 本地模型支援**：
   * 優先透過 `lmstudio` 官方 Python SDK 連線（不需要在 LM Studio 開啟「本地伺服器」）。
-  * SDK 不可用時自動退回 HTTP REST API（`aiohttp`）備援，相容所有 LM Studio 版本。
-  * 自動掃描本機常見路徑下的 `.gguf` 模型檔並加入選單。
+  * SDK 不可用或連線失敗時，自動退回 HTTP REST API（`aiohttp`）備援，依序嘗試 OpenAI 相容格式 `/chat/completions` 與 LM Studio 原生 `/chat` 端點。
+  * 自動掃描本機常見路徑下的 `.gguf` 模型檔並加入選單（自動排除 `mmproj` 多模態投影檔）。
+  * 掃描路徑涵蓋 `ai_models.json` 設定的路徑、當前使用者 `~/.lmstudio/models`，以及 Windows 上多個 AppData / Program Files 安裝路徑。
   * GUI 提供 LM Studio URL 輸入欄、**🔄 重新整理本地模型** 與 **🔌 測試連線** 按鈕。
   * 特殊選項「**[本地] 目前 LM Studio 載入的模型**」：直接使用 LM Studio 當前已載入的模型，無需指定路徑。
+  * **LM Studio URL 自動正規化**：輸入任意格式的 URL（含 `localhost`、`127.0.0.1`、含 port 或不含 port），程式會自動補全並同時嘗試多個候選位址，提升連線成功率。
+* **Windows asyncio 相容性修正**：在 Windows 上自動切換為 `SelectorEventLoop`，避免 `aiohttp` 在 `ProactorEventLoop` 下連線 localhost 不穩定的問題。
 * **模型清單來自 `ai_models.json`**：GitHub Copilot 雲端模型清單與 LM Studio 路徑設定皆可於 `ai_models.json` 調整，無需修改程式碼。
 * **多模型陣容切換**：可為專家 A、B、C 與裁判長分別指定雲端或本地模型。
 * **圖片與純文字雙模式**：可選擇整個資料夾掃描圖片，或直接多選圖片檔；若不提供圖片，也能以純文字模式執行。
@@ -63,15 +66,37 @@
 * 🟠 專家 C
 * 🟣 裁判長
 
-模型清單讀取自 `ai_models.json`，目前包含：
+模型清單讀取自 `ai_models.json`，目前包含（顯示名稱中的倍率為相對費用參考）：
 
-* Claude Sonnet 4.6（預設）/ 4.5 / 4
-* Claude Haiku 4.5
-* Claude Opus 4.6 / 4.5
-* Gemini 3 Pro (Preview) / Gemini 3.1 Pro (Preview)
-* GPT-5.4 / GPT-5.4 mini / GPT-5.3-Codex / GPT-5.2 / GPT-5.2-Codex / GPT-5.1 系列 / GPT-4.1
-* **[本地] 目前 LM Studio 載入的模型**（動態取得當前已載入模型）
-* **[本地] 自動掃描到的 .gguf 模型**（程式啟動時自動偵測）
+**雲端模型（GitHub Copilot）**
+
+| 顯示名稱 | API 模型 ID |
+| --- | --- |
+| Claude Sonnet 4.6 (default) \| 1x | claude-sonnet-4.6 |
+| Claude Sonnet 4.5 \| 1x | claude-sonnet-4.5 |
+| Claude Haiku 4.5 \| 0.33x | claude-haiku-4.5 |
+| Claude Opus 4.6 \| 3x | claude-opus-4.6 |
+| Claude Opus 4.5 \| 3x | claude-opus-4.5 |
+| Claude Sonnet 4 \| 1x | claude-sonnet-4 |
+| Gemini 3 Pro (Preview) \| 1x | gemini-3-pro-preview |
+| Gemini 3.1 Pro (Preview) \| 1x | gemini-3.1-pro-preview |
+| GPT-5.4 \| 1x | gpt-5.4 |
+| GPT-5.3-Codex \| 1x | gpt-5.3-codex |
+| GPT-5.2-Codex \| 1x | gpt-5.2-codex |
+| GPT-5.2 \| 1x | gpt-5.2 |
+| GPT-5.1-Codex-Max \| 1x | gpt-5.1-codex-max |
+| GPT-5.1-Codex \| 1x | gpt-5.1-codex |
+| GPT-5.1 \| 1x | gpt-5.1 |
+| GPT-5.4 mini \| 0.33x | gpt-5.4-mini |
+| GPT-5.1-Codex-Mini (Preview) \| 0.33x | gpt-5.1-codex-mini |
+| GPT-5 mini \| 0x | gpt-5-mini |
+| GPT-4.1 \| 0x | gpt-4.1 |
+
+**本地模型（LM Studio）**
+
+* **[本地] 目前 LM Studio 載入的模型**：動態取得當前 LM Studio 內已載入的模型
+* **[本地] 自動掃描到的 .gguf 模型**：程式啟動時自動偵測本機路徑
+* 按 **🔄 重新整理本地模型** 後，還會動態加入 **[本地-SDK]** 或 **[本地-API]** 項目（顯示實際已載入的模型 ID）
 
 若要更改 LM Studio 伺服器網址，可直接在模型區塊的 **LM Studio URL** 欄位修改後，按 **🔄 重新整理本地模型** 套用。
 
@@ -191,7 +216,7 @@ GEM_提示詞整合\
 
 * 圖片資料夾路徑
 * 多選圖片清單
-* LM Studio URL（新增）
+* LM Studio URL
 * 會議模式
 * 討論輪數上限
 * 四個角色的模型選擇
@@ -218,8 +243,9 @@ GEM_提示詞整合\
 
 * 這是一個本機 GUI 工具，執行時需要可用的桌面環境。
 * 圖片讀取支援 `.jpg`、`.jpeg`、`.png`、`.webp`；無法讀取的圖片會被略過。
-* LM Studio 連線相容性：部分電腦環境（特別是 Windows）可能因 `aiohttp` 或 LM Studio 版本差異導致 HTTP 模式連線不穩定；若遇此情況，可嘗試安裝 `lmstudio` 官方 SDK（`pip install lmstudio`），SDK 模式相容性較佳。
-* 若 LM Studio 功能無法使用，雲端 GitHub Copilot 模型不受影響，仍可正常運作。
+* **LM Studio 連線相容性**：部分電腦環境（特別是 Windows）可能因系統設定、網路 Proxy 或 LM Studio 版本差異，導致 HTTP 模式無法連線本地伺服器。遇此情況請優先安裝 `lmstudio` 官方 SDK（`pip install lmstudio`），SDK 模式不依賴 Local Server，相容性更佳。若 SDK 與 HTTP 均無法連線，雲端 GitHub Copilot 模型不受影響，仍可正常使用。
+* 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。
+* 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
 
 ---
