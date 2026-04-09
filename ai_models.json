@@ -1,0 +1,27 @@
+{
+    "models": {
+        "Claude Sonnet 4.6 (default) | 1x": "claude-sonnet-4.6",
+        "Claude Sonnet 4.5 | 1x": "claude-sonnet-4.5",
+        "Claude Haiku 4.5 | 0.33x": "claude-haiku-4.5",
+        "Claude Opus 4.6 | 3x": "claude-opus-4.6",
+        "Claude Opus 4.5 | 3x": "claude-opus-4.5",
+        "Claude Sonnet 4 | 1x": "claude-sonnet-4",
+        "Gemini 3 Pro (Preview) | 1x": "gemini-3-pro-preview",    
+        "Gemini 3.1 Pro (Preview) | 1x": "gemini-3.1-pro-preview",
+        "GPT-5.4 | 1x": "gpt-5.4",
+        "GPT-5.3-Codex | 1x": "gpt-5.3-codex",
+        "GPT-5.2-Codex | 1x": "gpt-5.2-codex",
+        "GPT-5.2 | 1x": "gpt-5.2",
+        "GPT-5.1-Codex-Max | 1x": "gpt-5.1-codex-max",
+        "GPT-5.1-Codex | 1x": "gpt-5.1-codex",
+        "GPT-5.1 | 1x": "gpt-5.1",
+        "GPT-5.4 mini | 0.33x": "gpt-5.4-mini",    
+        "GPT-5.1-Codex-Mini (Preview) | 0.33x": "gpt-5.1-codex-mini",
+        "GPT-5 mini | 0x": "gpt-5-mini",
+        "GPT-4.1 | 0x": "gpt-4.1"
+    },
+    "lm_studio_paths": [
+        "C:\\Users\\allmagicer\\.lmstudio\\models"
+    ],
+    "lm_studio_url": "http://localhost:1234/v1"
+}
