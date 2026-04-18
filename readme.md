@@ -248,14 +248,14 @@ GEM_提示詞整合\
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
 * **v2.8.9 修復（2026-04-18）**：
-  * **修正 `TypeError: t.asString is not a function` 錯誤**：
-    * **根因分析**：`session.send()` 方法只接受 `prompt`、`images` 和 `attachments` 參數（依據 SDK 0.1.0 的 `MessageOptions` 型別定義），不接受 `system_prompt` 參數。
-    * 前版本（v2.8.8）的 `build_payload()` 會將 `system_prompt` 加入 payload dict，並直接傳給 `session.send()`，導致底層 JavaScript 引擎處理未知參數時拋出 `t.asString is not a function` 錯誤。
-    * **修復策略**：
-      1. `build_payload()` 仍保留 `system_prompt` 參數（供呼叫者取用），但將其儲存在 payload 的 `system_prompt` key 中，不直接傳給 send。
-      2. `stream_agent_response()` 在呼叫 `session.send()` 前，會建立乾淨的 `send_payload`，只包含 `prompt` 和 `images`（若有）。
-      3. `system_prompt` 已在創建 session 時正確透過 `system_message` config 設定，無需在 send 時重複傳入。
-  * 此修復確保與 GitHub Copilot SDK 0.1.0 及更新版本的完全相容性。
+  * **修正 `TypeError: t.asString is not a function` 錯誤（第二次修正，根因正確定位）**：
+    * **根因分析**：前版本（v2.8.8）在 `create_session` 時以 Python SDK 的 `SystemMessageReplaceConfig` 物件格式傳遞系統提示詞：`{"mode": "replace", "content": "..."}`. CLI binary v0.0.411 的 TypeScript 執行引擎內部對 `systemMessage` 欄位呼叫 `.asString()` 方法；普通 JavaScript object 沒有此方法，因此拋出 `TypeError: t.asString is not a function`。
+    * **修復策略**：改用純字串（plain string）格式傳遞 `system_message`，取代舊有的 `{"mode": "replace", "content": "..."}` 物件格式。純字串可被 CLI binary 正確識別與處理。
+    * **附加強化**：
+      1. `session.on()` 現在正確儲存並於 `finally` 呼叫 `unsubscribe()`，避免 handler 殘留。
+      2. `done.wait()` 改為 `asyncio.wait_for(done.wait(), timeout=120.0)`，防止無回應時程式無限等待。
+      3. `session.destroy()` 在 `finally` 區塊中執行，確保每次使用後正確釋放 session 資源，避免多 session 衝突。
+      4. 修正 GUI 視窗標題仍顯示 `v2.8.8` 的問題，統一為 `v2.8.9`。
 * **v2.8.8 修復**：
   * **根本修正** `CopilotClient.create_session()` 跨版本相容問題：
     * 新版 SDK (main branch) 簽名為 `create_session(*, on_permission_request, model=None, streaming=None, system_message=None, ...)`，所有參數皆為 keyword-only，`on_permission_request` 為必填，完全不接受位置引數。

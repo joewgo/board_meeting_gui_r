@@ -653,7 +653,12 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
         system_prompt = payload.get("system_prompt", "")
         copilot_config: Dict[str, Any] = {"model": model_id, "streaming": True}
         if system_prompt:
-            copilot_config["system_message"] = {"mode": "replace", "content": system_prompt}
+            # v2.8.9 修正：使用純字串格式傳遞 system_message。
+            # CLI binary v0.0.411 收到 {"mode": "replace", "content": "..."} 物件格式時，
+            # 其 TypeScript 執行引擎會對該物件呼叫 .asString()，而普通 JS object 沒有此方法，
+            # 導致 "Execution failed: TypeError: t.asString is not a function"。
+            # 改用純字串可讓 CLI binary 直接以字串處理系統提示詞，迴避此類型錯誤。
+            copilot_config["system_message"] = system_prompt
         session = await _create_copilot_session(client, copilot_config)
     
     done = asyncio.Event() 
@@ -681,18 +686,27 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
             pass 
             
     # 註冊事件監聽器並發送請求
-    session.on(handle_event)
+    unsubscribe = session.on(handle_event)
     
     # 建立乾淨的 send payload：移除 system_prompt（已在 session 建立時設定）
-    # 只保留 prompt 和 images 等合法欄位
+    # 只保留 prompt 等合法欄位；images 僅用於 LM Studio HTTP 模式，CopilotSession 不支援
     send_payload = {"prompt": payload.get("prompt", "")}
-    if "images" in payload and payload["images"]:
-        send_payload["images"] = payload["images"]
     
-    await session.send(send_payload)
-    
-    # 阻塞等待直到 done.set() 被觸發
-    await done.wait() 
+    try:
+        await session.send(send_payload)
+        
+        # 阻塞等待直到 done.set() 被觸發，加入 120 秒超時防護避免無限等待
+        try:
+            await asyncio.wait_for(done.wait(), timeout=120.0)
+        except asyncio.TimeoutError:
+            log_callback(f"\n[超時] {role_name} 等待逾時（120 秒），強制結束此回合。")
+    finally:
+        # 確保每次都清理事件監聽器與 session，避免資源洩漏或多 session 衝突
+        unsubscribe()
+        try:
+            await session.destroy()
+        except Exception:
+            pass
     
     log_callback("\n") # 補上最後的換行
     return "".join(response_accumulator)
@@ -894,7 +908,7 @@ async def run_board_meeting(
 class BoardMeetingApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("露娜的 AI 董事會控制台 (v2.8.8 LM Studio 支援版)")
+        self.root.title("露娜的 AI 董事會控制台 (v2.8.9 LM Studio 支援版)")
         self.root.geometry("900x950") 
         
         # 容器規劃：上 (設定)、中 (提示詞與輸入)、下 (執行與日誌)
