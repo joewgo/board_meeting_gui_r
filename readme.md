@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.9
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.11
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.9.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.11.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -173,7 +173,7 @@ pip install lmstudio
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.8.9.py
+python board_meeting_gui_v2.8.11.py
 ```
 
 ---
@@ -247,6 +247,21 @@ GEM_提示詞整合\
 * 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。Python 3.14+ 的 DeprecationWarning 已靜音，Python 3.16+ 移除該 API 後會自動跳過。
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
+* **v2.8.11 修復（2026-04-18）**：
+  * **徹底修正 `'str' object has no attribute 'get'` 錯誤（v2.8.10 未完成的修正）**：
+    * **根因分析**：v2.8.10 的 readme 描述了「移除 `create_session()` 的 `system_message` 參數，改為嵌入 prompt」的修復策略，但**程式碼中未實際執行此修正**——`stream_agent_response()` 仍然設定 `copilot_config["system_message"] = system_prompt`（純字串），導致 SDK 內部呼叫 `.get()` 時因型別不匹配而拋出 `AttributeError`。
+    * **修復策略**：完全移除 `copilot_config` 中的 `system_message` 設定，改為將系統提示詞嵌入使用者 prompt 前方（以 `[系統指令]` / `[使用者需求]` 標籤明確區隔）。此方式不依賴 SDK 的 `system_message` 處理邏輯，徹底繞過所有版本差異。
+    * **LM Studio 路徑不受影響**：LMStudioSession 的 system_prompt 仍由 HTTP payload 或 SDK Chat 物件獨立處理。
+  * **移除專家模型的強制超時機制**：移除 `asyncio.wait_for(timeout=120)` 限制，改為 `await done.wait()`（無超時），允許低效能裝置（如 Intel N100 CPU）上的模型充分推論而不被強制中斷。使用者可透過 GUI 的「⛔ 停止」按鈕手動中止。
+  * **強化 `_create_copilot_session()` 的例外處理**：將 `except TypeError` 擴展為 `except Exception`，並新增四層降級策略（config dict 含 handler → keyword-only → config dict 不含 handler → 無參數），避免 `AttributeError` 等非預期例外冒泡至使用者介面。
+  * **所有函式與方法補充完整中文 docstring**：包含功能說明、參數描述、回傳值、注意事項與版本修正紀錄。
+* **v2.8.10 修復（2026-04-18）**：
+  * **修正 `'str' object has no attribute 'get'` 錯誤（根因分析與最終修正）**：
+    * **根因分析**：v2.8.9 在 `create_session` 時以純字串格式傳遞 `system_message`，但 Copilot Python SDK 內部對 `system_message` 呼叫 `.get()` 方法（預期字典型別），導致 `AttributeError: 'str' object has no attribute 'get'`。而 v2.8.8 使用字典格式 `{"mode": "replace", "content": "..."}` 時，CLI binary 又報 `TypeError: t.asString is not a function`。不同版本的 SDK / CLI binary 對 `system_message` 的型別期望不一致，無法透過單一格式相容。
+    * **修復策略**：完全移除 `create_session()` 的 `system_message` 參數，改為將系統提示詞直接嵌入使用者 prompt 前方（以 `[系統指令]` / `[使用者需求]` 標籤區隔）。此方式繞過所有 SDK 版本差異，確保雲端模型仍能正確接收角色設定。
+    * **LM Studio 路徑不受影響**：LMStudioSession 的 system_prompt 仍由 HTTP payload 或 SDK Chat 物件獨立處理，與此修正無關。
+  * **延長專家模型超時至 240 秒**：原本 120 秒的超時在低效能裝置（如 Intel N100 CPU）上使用本地模型時容易誤觸，現延長至 240 秒。
+  * **新增所有函式的詳細中文註解**：每個函式與方法皆補充完整的中文 docstring，包含功能說明、參數描述、回傳值與注意事項。
 * **v2.8.9 修復（2026-04-18）**：
   * **修正 `TypeError: t.asString is not a function` 錯誤（第二次修正，根因正確定位）**：
     * **根因分析**：前版本（v2.8.8）在 `create_session` 時以 Python SDK 的 `SystemMessageReplaceConfig` 物件格式傳遞系統提示詞：`{"mode": "replace", "content": "..."}`. CLI binary v0.0.411 的 TypeScript 執行引擎內部對 `systemMessage` 欄位呼叫 `.asString()` 方法；普通 JavaScript object 沒有此方法，因此拋出 `TypeError: t.asString is not a function`。
@@ -278,7 +293,7 @@ GEM_提示詞整合\
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.8.9.py`
+* 主程式：`board_meeting_gui_v2.8.11.py`
 * 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`
