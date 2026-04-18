@@ -575,12 +575,8 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
     """
     log_callback(f"\n{'-'*40}\n[{role_name} ({model_id}) 正在思考與作答...]\n", newline=False)
     
-    # 建立支援串流的會話（相容新舊版 CopilotClient SDK）
-    try:
-        session = await client.create_session({"model": model_id, "streaming": True})
-    except TypeError:
-        # 舊版 CopilotClient.create_session() 不接受參數
-        session = await client.create_session()
+    # 建立支援串流的會話（CopilotClient.create_session() 不接受參數）
+    session = await client.create_session()
     
     done = asyncio.Event() 
     response_accumulator = [] 
