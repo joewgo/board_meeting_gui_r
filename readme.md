@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.6
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.7
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.6.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.7.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -16,7 +16,7 @@
   * GUI 提供 LM Studio URL 輸入欄、**🔄 重新整理本地模型** 與 **🔌 測試連線** 按鈕。
   * 特殊選項「**[本地] 目前 LM Studio 載入的模型**」：直接使用 LM Studio 當前已載入的模型，無需指定路徑。
   * **LM Studio URL 自動正規化**：輸入任意格式的 URL（含 `localhost`、`127.0.0.1`、含 port 或不含 port），程式會自動補全並同時嘗試多個候選位址，提升連線成功率。
-* **Windows asyncio 相容性修正**：在 Windows 上自動切換為 `SelectorEventLoop`，避免 `aiohttp` 在 `ProactorEventLoop` 下連線 localhost 不穩定的問題。
+* **Windows asyncio 相容性修正**：在 Windows 上自動切換為 `SelectorEventLoop`，避免 `aiohttp` 在 `ProactorEventLoop` 下連線 localhost 不穩定的問題。Python 3.14+ 的 DeprecationWarning 已靜音處理，Python 3.16+ 移除後自動跳過。
 * **模型清單來自 `ai_models.json`**：GitHub Copilot 雲端模型清單與 LM Studio 路徑設定皆可於 `ai_models.json` 調整，無需修改程式碼。
 * **多模型陣容切換**：可為專家 A、B、C 與裁判長分別指定雲端或本地模型。
 * **圖片與純文字雙模式**：可選擇整個資料夾掃描圖片，或直接多選圖片檔；若不提供圖片，也能以純文字模式執行。
@@ -173,7 +173,7 @@ pip install lmstudio
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.8.6.py
+python board_meeting_gui_v2.8.7.py
 ```
 
 ---
@@ -244,16 +244,19 @@ GEM_提示詞整合\
 * 這是一個本機 GUI 工具，執行時需要可用的桌面環境。
 * 圖片讀取支援 `.jpg`、`.jpeg`、`.png`、`.webp`；無法讀取的圖片會被略過。
 * **LM Studio 連線相容性**：部分電腦環境（特別是 Windows）可能因系統設定、網路 Proxy 或 LM Studio 版本差異，導致 HTTP 模式無法連線本地伺服器。遇此情況請優先安裝 `lmstudio` 官方 SDK（`pip install lmstudio`），SDK 模式不依賴 Local Server，相容性更佳。若 SDK 與 HTTP 均無法連線，雲端 GitHub Copilot 模型不受影響，仍可正常使用。
-* 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。
+* 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。Python 3.14+ 的 DeprecationWarning 已靜音，Python 3.16+ 移除該 API 後會自動跳過。
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
-* **v2.8.6 修復**：修正 CopilotClient.create_session() API 呼叫錯誤，移除不必要的參數傳遞，確保在所有 SDK 版本中正常運作。
+* **v2.8.7 修復**：
+  * 修正 `CopilotClient.create_session()` 呼叫方式：正確傳入 model / streaming config dict，並以 `try/except TypeError` 向下相容不接受參數的舊版 SDK。
+  * 修正 Windows asyncio DeprecationWarning：使用 `warnings.catch_warnings()` 靜音 Python 3.14+ 的棄用警告，並加上 `hasattr` 守衛以相容 Python 3.16+。
+  * 區分 `CopilotClient` 與 `LMStudioClient` 的 `create_session` 呼叫路徑，避免 Duck Typing 混淆。
 
 ---
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.8.6.py`
+* 主程式：`board_meeting_gui_v2.8.7.py`
 * 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`
