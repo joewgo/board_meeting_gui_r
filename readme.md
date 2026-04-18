@@ -255,6 +255,7 @@ GEM_提示詞整合\
   * **移除專家模型的強制超時機制**：移除 `asyncio.wait_for(timeout=120)` 限制，改為 `await done.wait()`（無超時），允許低效能裝置（如 Intel N100 CPU）上的模型充分推論而不被強制中斷。使用者可透過 GUI 的「⛔ 停止」按鈕手動中止。
   * **強化 `_create_copilot_session()` 的例外處理**：將 `except TypeError` 擴展為 `except Exception`，並新增四層降級策略（config dict 含 handler → keyword-only → config dict 不含 handler → 無參數），避免 `AttributeError` 等非預期例外冒泡至使用者介面。
   * **所有函式與方法補充完整中文 docstring**：包含功能說明、參數描述、回傳值、注意事項與版本修正紀錄。
+  * **v2.8.11 版仍無法在迷你電腦上正確執行，目前原因不明；但迷你電腦能執行gitthub copilot cli***
 * **v2.8.10 修復（2026-04-18）**：
   * **修正 `'str' object has no attribute 'get'` 錯誤（根因分析與最終修正）**：
     * **根因分析**：v2.8.9 在 `create_session` 時以純字串格式傳遞 `system_message`，但 Copilot Python SDK 內部對 `system_message` 呼叫 `.get()` 方法（預期字典型別），導致 `AttributeError: 'str' object has no attribute 'get'`。而 v2.8.8 使用字典格式 `{"mode": "replace", "content": "..."}` 時，CLI binary 又報 `TypeError: t.asString is not a function`。不同版本的 SDK / CLI binary 對 `system_message` 的型別期望不一致，無法透過單一格式相容。
