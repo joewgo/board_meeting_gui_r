@@ -575,12 +575,11 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
     """
     log_callback(f"\n{'-'*40}\n[{role_name} ({model_id}) 正在思考與作答...]\n", newline=False)
     
-    # 建立支援串流的會話（相容新舊版 Copilot SDK）
-    session_config = {"model": model_id, "streaming": True}
+    # 建立支援串流的會話（相容新舊版 CopilotClient SDK）
     try:
-        session = await client.create_session(session_config)
+        session = await client.create_session({"model": model_id, "streaming": True})
     except TypeError:
-        # 舊版 SDK 的 create_session() 不接受參數，改用無參數呼叫
+        # 舊版 CopilotClient.create_session() 不接受參數
         session = await client.create_session()
     
     done = asyncio.Event() 
