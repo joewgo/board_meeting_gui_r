@@ -247,6 +247,7 @@ GEM_提示詞整合\
 * 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
+* **v2.8.6 修復**：修正 CopilotClient.create_session() API 呼叫錯誤，移除不必要的參數傳遞，確保在所有 SDK 版本中正常運作。
 
 ---
 
