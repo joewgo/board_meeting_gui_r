@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.7
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.8
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.7.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.8.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -173,7 +173,7 @@ pip install lmstudio
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.8.7.py
+python board_meeting_gui_v2.8.8.py
 ```
 
 ---
@@ -247,6 +247,9 @@ GEM_提示詞整合\
 * 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。Python 3.14+ 的 DeprecationWarning 已靜音，Python 3.16+ 移除該 API 後會自動跳過。
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
+* **v2.8.8 修復**：
+  * 修正 `CopilotClient.create_session()` 在新版 SDK（≥0.1.26）中因缺少必填參數 `on_permission_request` 而拋出 `TypeError` 的問題。新增 `_create_copilot_session()` 輔助函式，以三層 `try/except` 策略（config dict → keyword-only arg → 無參數）確保跨版本相容。
+  * 修正 Windows asyncio `DeprecationWarning` 仍然輸出至 stderr 的問題：將 `warnings.catch_warnings()` 靜音區塊提前到 `hasattr` 存取之前，避免屬性存取本身就觸發警告。
 * **v2.8.7 修復**：
   * 修正 `CopilotClient.create_session()` 呼叫方式：正確傳入 model / streaming / system_message config dict，並以 `try/except TypeError` 向下相容不接受參數的舊版 SDK。
   * 修正 system prompt 傳遞路徑：CopilotClient 的 system prompt 現在透過 `create_session` 的 `system_message` 欄位正確套用，不再依賴 `session.send()` 忽略的額外 key。
@@ -257,7 +260,7 @@ GEM_提示詞整合\
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.8.7.py`
+* 主程式：`board_meeting_gui_v2.8.8.py`
 * 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`

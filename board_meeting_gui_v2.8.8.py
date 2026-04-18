@@ -31,11 +31,12 @@ except ImportError:
 # 部分 aiohttp 版本在此迴圈下連線 localhost 可能不穩定。
 # 強制改用 SelectorEventLoop 以提升相容性。
 # Python 3.14+ 標記 WindowsSelectorEventLoopPolicy 為 deprecated（3.16 移除），
-# 故使用 warnings 靜音並加上 hasattr 守衛。
-if sys.platform == "win32" and hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+# 故 warnings 靜音必須包裹住 hasattr 與實例化兩個步驟，
+# 避免 hasattr(asyncio, ...) 存取屬性時就觸發 DeprecationWarning。
+import warnings as _warnings
+with _warnings.catch_warnings():
+    _warnings.simplefilter("ignore", DeprecationWarning)
+    if sys.platform == "win32" and hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # ==========================================
@@ -573,6 +574,40 @@ class LMStudioClient:
         return session
 
 
+def _default_permission_handler(request, metadata=None):
+    """預設權限處理器：自動核准所有來自 Copilot 的工具權限請求。
+    此 Board Meeting 場景不需要 shell/write 等工具，但新版 SDK 要求
+    必須提供 on_permission_request 回呼；給予 auto-approve 避免阻塞。"""
+    return {"kind": "approved"}
+
+
+async def _create_copilot_session(client, copilot_config: Dict[str, Any]):
+    """建立 CopilotClient session，相容新舊版 github-copilot-sdk：
+    - SDK ≥0.1.26：create_session() 要求 on_permission_request 為必填 keyword-only arg
+    - SDK ≤0.1.25：on_permission_request 僅為 config dict 內的可選 key
+    - 極舊版本  ：create_session() 不接受任何參數
+    以三層 try/except 逐步退化，確保跨版本相容。
+    """
+    # 確保 config 裡一定有 on_permission_request（舊版會忽略；新版可能從此取用）
+    copilot_config.setdefault("on_permission_request", _default_permission_handler)
+
+    # 策略 1：config dict 傳入（適用 SDK ≤0.1.25 且含此 key 的版本）
+    try:
+        return await client.create_session(copilot_config)
+    except TypeError:
+        pass
+
+    # 策略 2：on_permission_request 作為獨立 keyword-only argument（SDK ≥0.1.26）
+    handler = copilot_config.pop("on_permission_request", _default_permission_handler)
+    try:
+        return await client.create_session(copilot_config, on_permission_request=handler)
+    except TypeError:
+        pass
+
+    # 策略 3：極舊版 SDK，不帶任何參數
+    return await client.create_session()
+
+
 async def stream_agent_response(client: CopilotClient, model_id: str, payload: dict, role_name: str, log_callback) -> str:
     """
     負責處理單一 AI 模型的即時串流輸出函式。
@@ -581,7 +616,7 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
     log_callback(f"\n{'-'*40}\n[{role_name} ({model_id}) 正在思考與作答...]\n", newline=False)
     
     # 建立支援串流的會話
-    # CopilotClient：傳入 model / streaming / system_message config；若 SDK 版本不支援則退回無參數呼叫
+    # CopilotClient：傳入 model / streaming / system_message config；使用 _create_copilot_session 處理 SDK 版本差異
     # LMStudioClient：傳入 model config 以指定本地模型
     if isinstance(client, LMStudioClient):
         session = await client.create_session({"model": model_id})
@@ -590,10 +625,7 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
         copilot_config: Dict[str, Any] = {"model": model_id, "streaming": True}
         if system_prompt:
             copilot_config["system_message"] = {"mode": "replace", "content": system_prompt}
-        try:
-            session = await client.create_session(copilot_config)
-        except TypeError:
-            session = await client.create_session()
+        session = await _create_copilot_session(client, copilot_config)
     
     done = asyncio.Event() 
     response_accumulator = [] 
@@ -652,7 +684,7 @@ async def run_board_meeting(
         return cancel_event is not None and cancel_event.is_set()
 
     mode_label = next((k for k, v in MEETING_MODE_MAPPING.items() if v == meeting_mode), meeting_mode)
-    log_callback("--- 露娜的 AI 董事會 (v2.8.7) 啟動 ---")
+    log_callback("--- 露娜的 AI 董事會 (v2.8.8) 啟動 ---")
     log_callback(f"[系統] 會議模式：{mode_label}")
 
 
@@ -826,7 +858,7 @@ async def run_board_meeting(
 class BoardMeetingApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("露娜的 AI 董事會控制台 (v2.8.7 LM Studio 支援版)")
+        self.root.title("露娜的 AI 董事會控制台 (v2.8.8 LM Studio 支援版)")
         self.root.geometry("900x950") 
         
         # 容器規劃：上 (設定)、中 (提示詞與輸入)、下 (執行與日誌)
