@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.8
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.9
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.8.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.9.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -173,7 +173,7 @@ pip install lmstudio
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.8.8.py
+python board_meeting_gui_v2.8.9.py
 ```
 
 ---
@@ -247,6 +247,15 @@ GEM_提示詞整合\
 * 程式在 Windows 上執行時會自動切換為 `WindowsSelectorEventLoopPolicy`，以避免 `aiohttp` 在預設 `ProactorEventLoop` 下連線 localhost 不穩定的問題。Python 3.14+ 的 DeprecationWarning 已靜音，Python 3.16+ 移除該 API 後會自動跳過。
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
+* **v2.8.9 修復（2026-04-18）**：
+  * **修正 `TypeError: t.asString is not a function` 錯誤**：
+    * **根因分析**：`session.send()` 方法只接受 `prompt`、`images` 和 `attachments` 參數（依據 SDK 0.1.0 的 `MessageOptions` 型別定義），不接受 `system_prompt` 參數。
+    * 前版本（v2.8.8）的 `build_payload()` 會將 `system_prompt` 加入 payload dict，並直接傳給 `session.send()`，導致底層 JavaScript 引擎處理未知參數時拋出 `t.asString is not a function` 錯誤。
+    * **修復策略**：
+      1. `build_payload()` 仍保留 `system_prompt` 參數（供呼叫者取用），但將其儲存在 payload 的 `system_prompt` key 中，不直接傳給 send。
+      2. `stream_agent_response()` 在呼叫 `session.send()` 前，會建立乾淨的 `send_payload`，只包含 `prompt` 和 `images`（若有）。
+      3. `system_prompt` 已在創建 session 時正確透過 `system_message` config 設定，無需在 send 時重複傳入。
+  * 此修復確保與 GitHub Copilot SDK 0.1.0 及更新版本的完全相容性。
 * **v2.8.8 修復**：
   * **根本修正** `CopilotClient.create_session()` 跨版本相容問題：
     * 新版 SDK (main branch) 簽名為 `create_session(*, on_permission_request, model=None, streaming=None, system_message=None, ...)`，所有參數皆為 keyword-only，`on_permission_request` 為必填，完全不接受位置引數。
@@ -264,7 +273,7 @@ GEM_提示詞整合\
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.8.8.py`
+* 主程式：`board_meeting_gui_v2.8.9.py`
 * 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`
