@@ -256,6 +256,11 @@ GEM_提示詞整合\
       2. `done.wait()` 改為 `asyncio.wait_for(done.wait(), timeout=120.0)`，防止無回應時程式無限等待。
       3. `session.destroy()` 在 `finally` 區塊中執行，確保每次使用後正確釋放 session 資源，避免多 session 衝突。
       4. 修正 GUI 視窗標題仍顯示 `v2.8.8` 的問題，統一為 `v2.8.9`。
+  * **修正 LM Studio 本地模型相容性問題（2026-04-18 第三次修正）**：
+    * `LMStudioSession.on()` 原本無回傳值（`None`），導致 `finally` 區塊呼叫 `unsubscribe()` 時拋出 `TypeError`。現在正確回傳 `_unsubscribe` callable，行為與 `CopilotSession.on()` 一致。
+    * 新增 `LMStudioSession.destroy()` 非同步方法，避免 `await session.destroy()` 因 `AttributeError` 而失敗。
+    * 修正 `stream_agent_response()` 中的 `send_payload` 組裝邏輯：CopilotSession 僅送 `prompt`（system_prompt 已在 `create_session` 時設定），LMStudioSession 需要完整 payload（含 `system_prompt`、`images`），以維持本地模型的系統提示詞與圖片推論功能。
+    * `unsubscribe()` 呼叫前增加 `if callable(unsubscribe)` 安全檢查，防止任何意外情境下的空值呼叫。
 * **v2.8.8 修復**：
   * **根本修正** `CopilotClient.create_session()` 跨版本相容問題：
     * 新版 SDK (main branch) 簽名為 `create_session(*, on_permission_request, model=None, streaming=None, system_message=None, ...)`，所有參數皆為 keyword-only，`on_permission_request` 為必填，完全不接受位置引數。

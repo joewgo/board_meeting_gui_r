@@ -365,6 +365,17 @@ class LMStudioSession:
 
     def on(self, callback):
         self.callbacks.append(callback)
+        # 回傳 unsubscribe callable，與 CopilotSession.on() 行為一致
+        def _unsubscribe():
+            try:
+                self.callbacks.remove(callback)
+            except ValueError:
+                pass
+        return _unsubscribe
+
+    async def destroy(self):
+        """釋放資源（LMStudioSession 無需額外清理，僅為介面一致性）"""
+        self.callbacks.clear()
 
     async def _get_current_model(self) -> str:
         """查詢 LM Studio /v1/models 取得目前載入的模型 ID"""
@@ -688,9 +699,12 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
     # 註冊事件監聽器並發送請求
     unsubscribe = session.on(handle_event)
     
-    # 建立乾淨的 send payload：移除 system_prompt（已在 session 建立時設定）
-    # 只保留 prompt 等合法欄位；images 僅用於 LM Studio HTTP 模式，CopilotSession 不支援
-    send_payload = {"prompt": payload.get("prompt", "")}
+    # CopilotSession：乾淨的 payload（只保留 prompt；system_prompt 已透過 create_session 設定）
+    # LMStudioSession：完整 payload（system_prompt/images 由 LMStudioSession.send() 內部處理）
+    if isinstance(client, LMStudioClient):
+        send_payload = payload  # LMStudioSession 需要 system_prompt 與 images
+    else:
+        send_payload = {"prompt": payload.get("prompt", "")}
     
     try:
         await session.send(send_payload)
@@ -701,8 +715,9 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
         except asyncio.TimeoutError:
             log_callback(f"\n[超時] {role_name} 等待逾時（120 秒），強制結束此回合。")
     finally:
-        # 確保每次都清理事件監聽器與 session，避免資源洩漏或多 session 衝突
-        unsubscribe()
+        # 確保每次都清理事件監聯器與 session，避免資源洩漏或多 session 衝突
+        if callable(unsubscribe):
+            unsubscribe()
         try:
             await session.destroy()
         except Exception:
