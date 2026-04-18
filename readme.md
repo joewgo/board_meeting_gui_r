@@ -1,6 +1,6 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.5
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.6
 
-這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.5.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
+這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.6.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
 ## ✨ 核心功能
 
@@ -173,7 +173,7 @@ pip install lmstudio
 請在專案目錄中執行：
 
 ```bash
-python board_meeting_gui_v2.8.5.py
+python board_meeting_gui_v2.8.6.py
 ```
 
 ---
@@ -252,7 +252,7 @@ GEM_提示詞整合\
 
 ## 📌 目前對應的主程式
 
-* 主程式：`board_meeting_gui_v2.8.5.py`
+* 主程式：`board_meeting_gui_v2.8.6.py`
 * 模型設定：`ai_models.json`
 * 設定檔：`board_meeting_config.json`
 * 模板目錄：`GEM_提示詞整合\`
