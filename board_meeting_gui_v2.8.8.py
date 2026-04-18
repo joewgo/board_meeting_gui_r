@@ -574,37 +574,58 @@ class LMStudioClient:
         return session
 
 
-def _default_permission_handler(request, metadata=None):
-    """預設權限處理器：自動核准所有來自 Copilot 的工具權限請求。
-    此 Board Meeting 場景不需要 shell/write 等工具，但新版 SDK 要求
-    必須提供 on_permission_request 回呼；給予 auto-approve 避免阻塞。"""
-    return {"kind": "approved"}
+class _PermissionApprovedResult:
+    """PermissionRequestResult 相容物件：實作 approve_all 語意。
+    新版 SDK (main) 呼叫 handler 後存取 .kind / .rules / .feedback / .message / .path，
+    此物件直接提供必要屬性，無需依賴 copilot.session.PermissionRequestResult dataclass
+    （避免在舊版 SDK 中 ImportError）。"""
+    kind: str = "approved"
+    rules = None
+    feedback = None
+    message = None
+    path = None
+
+
+def _default_permission_handler(request, invocation=None):
+    """自動核准所有來自 Copilot 的工具權限請求。
+    Board Meeting 場景不呼叫任何外部工具，handler 通常不會被觸發；
+    但新版 SDK (main) 要求必須傳入合法 callable，此處回傳相容物件確保安全。"""
+    return _PermissionApprovedResult()
 
 
 async def _create_copilot_session(client, copilot_config: Dict[str, Any]):
-    """建立 CopilotClient session，相容新舊版 github-copilot-sdk：
-    - SDK ≥0.1.26：create_session() 要求 on_permission_request 為必填 keyword-only arg
-    - SDK ≤0.1.25：on_permission_request 僅為 config dict 內的可選 key
-    - 極舊版本  ：create_session() 不接受任何參數
-    以三層 try/except 逐步退化，確保跨版本相容。
+    """建立 CopilotClient session，相容新版 SDK (main) 與舊版 SDK (≤0.1.25)：
+
+    新版 SDK (main branch)：
+        create_session(*, on_permission_request, model=None, streaming=None, system_message=None, ...)
+        → 所有參數皆為 keyword-only；on_permission_request 為必填；不接受位置引數
+
+    舊版 SDK (≤0.1.25)：
+        create_session(config: Optional[SessionConfig] = None)
+        → 接受 config dict 作為位置引數；無 on_permission_request 參數
+
+    策略：優先嘗試新版 keyword-only API，再降級至舊版 config dict，最後無參數。
     """
-    # 確保 config 裡一定有 on_permission_request（舊版會忽略；新版可能從此取用）
-    copilot_config.setdefault("on_permission_request", _default_permission_handler)
+    # 取出 session 相關 kwargs（排除 on_permission_request，下面獨立傳入）
+    session_kwargs = {k: v for k, v in copilot_config.items() if k != "on_permission_request"}
 
-    # 策略 1：config dict 傳入（適用 SDK ≤0.1.25 且含此 key 的版本）
+    # 策略 1：新版 SDK (main) — 全 keyword-only，on_permission_request 為必填 kwarg
+    # 若 SDK 不認識 on_permission_request 或其他 kwargs，會拋出 TypeError，落入策略 2
     try:
-        return await client.create_session(copilot_config)
+        return await client.create_session(
+            on_permission_request=_default_permission_handler,
+            **session_kwargs,
+        )
     except TypeError:
         pass
 
-    # 策略 2：on_permission_request 作為獨立 keyword-only argument（SDK ≥0.1.26）
-    handler = copilot_config.pop("on_permission_request", _default_permission_handler)
+    # 策略 2：舊版 SDK (≤0.1.25) — 傳入 config dict（不含 on_permission_request）
     try:
-        return await client.create_session(copilot_config, on_permission_request=handler)
+        return await client.create_session(session_kwargs)
     except TypeError:
         pass
 
-    # 策略 3：極舊版 SDK，不帶任何參數
+    # 策略 3：極舊版 SDK — 不帶任何參數
     return await client.create_session()
 
 

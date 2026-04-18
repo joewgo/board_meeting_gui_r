@@ -248,7 +248,11 @@ GEM_提示詞整合\
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
 * **v2.8.8 修復**：
-  * 修正 `CopilotClient.create_session()` 在新版 SDK（≥0.1.26）中因缺少必填參數 `on_permission_request` 而拋出 `TypeError` 的問題。新增 `_create_copilot_session()` 輔助函式，以三層 `try/except` 策略（config dict → keyword-only arg → 無參數）確保跨版本相容。
+  * **根本修正** `CopilotClient.create_session()` 跨版本相容問題：
+    * 新版 SDK (main branch) 簽名為 `create_session(*, on_permission_request, model=None, streaming=None, system_message=None, ...)`，所有參數皆為 keyword-only，`on_permission_request` 為必填，完全不接受位置引數。
+    * 修正舊版 v2.8.8（前次提交）策略順序錯誤：前次實作先嘗試舊版 config-dict 方式，再以位置引數 + keyword 混傳（仍被新 SDK 拒絕），最後 `create_session()` 無引數仍缺少 `on_permission_request`，三策略全部失敗。
+    * **正確策略**：先嘗試新版 keyword-only API（策略 1），再降級為舊版 config dict（策略 2），最後無參數備援（策略 3）。
+  * 新增 `_PermissionApprovedResult` 相容物件，取代回傳 `dict` 的舊實作。新版 SDK 呼叫 permission handler 後會存取 `.kind`、`.rules`、`.feedback`、`.message`、`.path` 屬性；舊版 dict 在此會拋出 `AttributeError`；相容物件可正確提供所有屬性，同時不依賴 `copilot.session.PermissionRequestResult` dataclass（避免舊版 SDK 的 `ImportError`）。
   * 修正 Windows asyncio `DeprecationWarning` 仍然輸出至 stderr 的問題：將 `warnings.catch_warnings()` 靜音區塊提前到 `hasattr` 存取之前，避免屬性存取本身就觸發警告。
 * **v2.8.7 修復**：
   * 修正 `CopilotClient.create_session()` 呼叫方式：正確傳入 model / streaming / system_message config dict，並以 `try/except TypeError` 向下相容不接受參數的舊版 SDK。
