@@ -248,7 +248,8 @@ GEM_提示詞整合\
 * 連線 LM Studio 時，程式會繞過系統 Proxy（直連 localhost），若有特殊網路環境請注意。
 * 程式目前沒有額外的自動測試或 requirements 檔；若你要在新環境部署，建議先確認 Copilot SDK、aiohttp 與 Python 版本相容。
 * **v2.8.7 修復**：
-  * 修正 `CopilotClient.create_session()` 呼叫方式：正確傳入 model / streaming config dict，並以 `try/except TypeError` 向下相容不接受參數的舊版 SDK。
+  * 修正 `CopilotClient.create_session()` 呼叫方式：正確傳入 model / streaming / system_message config dict，並以 `try/except TypeError` 向下相容不接受參數的舊版 SDK。
+  * 修正 system prompt 傳遞路徑：CopilotClient 的 system prompt 現在透過 `create_session` 的 `system_message` 欄位正確套用，不再依賴 `session.send()` 忽略的額外 key。
   * 修正 Windows asyncio DeprecationWarning：使用 `warnings.catch_warnings()` 靜音 Python 3.14+ 的棄用警告，並加上 `hasattr` 守衛以相容 Python 3.16+。
   * 區分 `CopilotClient` 與 `LMStudioClient` 的 `create_session` 呼叫路徑，避免 Duck Typing 混淆。
 

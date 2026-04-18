@@ -581,13 +581,17 @@ async def stream_agent_response(client: CopilotClient, model_id: str, payload: d
     log_callback(f"\n{'-'*40}\n[{role_name} ({model_id}) 正在思考與作答...]\n", newline=False)
     
     # 建立支援串流的會話
-    # CopilotClient：傳入 model / streaming config；若 SDK 版本不支援則退回無參數呼叫
+    # CopilotClient：傳入 model / streaming / system_message config；若 SDK 版本不支援則退回無參數呼叫
     # LMStudioClient：傳入 model config 以指定本地模型
     if isinstance(client, LMStudioClient):
         session = await client.create_session({"model": model_id})
     else:
+        system_prompt = payload.get("system_prompt", "")
+        copilot_config: Dict[str, Any] = {"model": model_id, "streaming": True}
+        if system_prompt:
+            copilot_config["system_message"] = {"mode": "replace", "content": system_prompt}
         try:
-            session = await client.create_session({"model": model_id, "streaming": True})
+            session = await client.create_session(copilot_config)
         except TypeError:
             session = await client.create_session()
     
