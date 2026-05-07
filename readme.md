@@ -1,4 +1,12 @@
-# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.11
+Github Copilot 的計費方式改變後，
+結果5月之前用這程式都很正常，子代理也不會被限流。
+5月開始，它會被限流，問的東西量很大時，
+AI會使用子代理或者我要求AI可以因為資料量過大利用子代理，
+然後就會觸發限流，第一次是無法使用2個小時，
+今天發現變成限制72小時無法使用。 
+
+# 🎤 露娜的 AI 董事會控制台 (AI Board Meeting Console) v2.8.11 
+
 
 這是一個以 Python + Tkinter 製作的桌面 GUI 工具，整合 GitHub Copilot SDK 與 LM Studio 本地模型，讓多個 AI 模型依照指定流程共同分析同一個議題，最後由裁判長輸出 Markdown 決策報告。`board_meeting_gui_v2.8.11.py` 提供單模型、接力、討論共識三種模式，並支援 LM Studio 本地模型、圖片輔助推論、提示詞模板、即時串流日誌與設定持久化。
 
